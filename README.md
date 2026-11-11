@@ -17,9 +17,13 @@ Supported-release publication follows PRD 17's separate verification, feature-ow
 4. Configure the source repository's public HTTPS `PULSEAI_LOGIN_SERVER_URL`. Confirm the existing native runners are available. Keep the source's `desktop-validation` environment credential-free.
 5. Set this repository's `PULSEAI_AUTO_DRAFT` variable to `true`. After a reviewed version bump has merged to source `main`, push its matching `desktop-v<version>` source tag. Check both native jobs and the automatic draft workflow. The optional `source_run_id` dispatch input retries a specific source run.
 
-These changes use the organization Free plan. The public transfer job runs on GitHub's free public-repository Linux runner. Private candidate artifacts use the source repository's Actions storage quota and expire after one day. Check available storage before the first tagged run and retain a zero-spend limit if paid overage is unwanted. The publisher may be delayed by GitHub's schedule and public scheduled workflows can be disabled after 60 days without repository activity. Re-enable the workflow in Actions if that occurs. App suspension or key revocation also stops transfer.
+These changes use the organization Free plan. The public transfer job runs on GitHub's free public-repository Linux runner. Private candidate artifacts use the source repository's Actions storage quota and expire after one day. Before the first tagged run, record both platform artifact archive sizes, their combined size, current shared storage usage and the account's spending limit. Confirm the pair fits the available allowance at the approved spending limit, then retain evidence of the first real paired upload and transfer. Keep a zero-spend limit when paid overage is unwanted. The publisher may be delayed by GitHub's schedule and public scheduled workflows can be disabled after 60 days without repository activity. Re-enable the workflow in Actions if that occurs. App suspension or key revocation also stops transfer.
 
 The source repository needs no cross-repository write credential or enforceable private tag ruleset for this path. A moved source tag is rejected, and an existing draft's source identity and uploaded asset hashes prevent replacement. The older direct-upload path remains subject to its own protected-tag and scoped-token setup requirements.
+
+## Candidate retries
+
+After a failed native build, use **Re-run all jobs** in the source workflow so both platform jobs and their artifacts come from the same successful attempt. A single-platform retry leaves the other platform's artifact on an earlier attempt, which the controller rejects. For an interrupted transfer, dispatch this repository's workflow with the original `source_run_id` while both artifacts remain available. Matching uploaded assets resume by checksum. Record the source run URL and attempt with the resulting draft's exact `Candidate transfer: complete` marker.
 
 ## Verification
 
