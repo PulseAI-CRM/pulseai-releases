@@ -1,0 +1,59 @@
+name: Automatic desktop drafts
+
+on:
+  pull_request:
+    paths: ['.github/workflows/automatic-drafts.yml', 'scripts/**', 'tests/**']
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Optional source workflow run to retry
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('draft-validation-{0}', github.event.pull_request.number) || 'automatic-desktop-drafts' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests -v
+
+  upload:
+    needs: validate
+    if: github.repository == 'PulseAI-CRM/pulseai-releases' && github.ref == 'refs/heads/main' && vars.PULSEAI_AUTO_DRAFT == 'true'
+    runs-on: ubuntu-latest
+    environment: desktop-publisher
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create short-lived source read token
+        id: source
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SOURCE_ARTIFACTS_APP_ID }}
+          private-key: ${{ secrets.SOURCE_ARTIFACTS_APP_KEY }}
+          owner: PulseAI-CRM
+          repositories: PulseAI
+          permission-actions: read
+          permission-contents: read
+      - name: Verify private candidates and upload drafts
+        env:
+          SOURCE_ARTIFACTS_TOKEN: ${{ steps.source.outputs.token }}
+          RELEASES_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: python3 scripts/automatic_drafts.py

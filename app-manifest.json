@@ -1,0 +1,15 @@
+{
+  "name": "PulseAI Desktop Artifact Reader",
+  "url": "https://github.com/PulseAI-CRM/pulseai-releases",
+  "description": "Read checked PulseAI desktop candidates for automatic draft upload.",
+  "public": true,
+  "hook_attributes": {
+    "url": "https://github.com/PulseAI-CRM/pulseai-releases",
+    "active": false
+  },
+  "default_permissions": {
+    "actions": "read",
+    "contents": "read"
+  },
+  "default_events": []
+}
