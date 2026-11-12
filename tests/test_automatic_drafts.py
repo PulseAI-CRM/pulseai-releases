@@ -218,6 +218,27 @@ class CandidateTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 uploader.unpack_candidate(root / "candidate.zip", root / "out", IDENTITY, platform)
 
+    def test_artifact_download_uses_github_api_accept_for_redirect(self):
+        github = uploader.GitHub(uploader.SOURCE, "source-secret")
+        data = b"synthetic archive"
+        location = "https://test.blob.core.windows.net/archive?sig=secret"
+
+        def respond(request, timeout):
+            if request.full_url.startswith("https://api.github.com/"):
+                if request.get_header("Accept") != "application/vnd.github+json":
+                    raise HTTPError(request.full_url, 415, "Unsupported Media Type", {}, io.BytesIO())
+                self.assertEqual(request.get_header("Authorization"), "Bearer source-secret")
+                raise HTTPError(request.full_url, 302, "Found", {"Location": location}, io.BytesIO())
+            self.assertEqual(request.full_url, location)
+            self.assertFalse(request.has_header("Authorization"))
+            return io.BytesIO(data)
+
+        with tempfile.TemporaryDirectory() as temporary, patch.object(github.opener, "open", side_effect=respond) as open_request:
+            destination = Path(temporary) / "archive"
+            github.download("actions/artifacts/1/zip", destination, f"sha256:{hashlib.sha256(data).hexdigest()}")
+            self.assertEqual(destination.read_bytes(), data)
+            self.assertEqual(open_request.call_count, 2)
+
     def test_private_authorization_is_not_forwarded_to_download_host(self):
         github = uploader.GitHub(uploader.SOURCE, "source-secret")
         data = b"synthetic archive"
