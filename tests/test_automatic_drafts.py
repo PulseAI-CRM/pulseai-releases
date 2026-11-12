@@ -244,7 +244,7 @@ class CandidateTests(unittest.TestCase):
         github = uploader.GitHub(uploader.SOURCE, "source-secret")
         data = b"synthetic archive"
         redirect = HTTPError("https://api.github.com/private", 302, "Found", {"Location": "https://test.blob.core.windows.net/archive?sig=secret"}, None)
-        with tempfile.TemporaryDirectory() as temporary, patch.object(github, "request", side_effect=redirect), patch.object(github.opener, "open", return_value=io.BytesIO(data)) as open_request:
+        with redirect, tempfile.TemporaryDirectory() as temporary, patch.object(github, "request", side_effect=redirect), patch.object(github.opener, "open", return_value=io.BytesIO(data)) as open_request:
             github.download("actions/artifacts/1/zip", Path(temporary) / "archive", f"sha256:{hashlib.sha256(data).hexdigest()}")
             request = open_request.call_args.args[0]
             self.assertFalse(request.has_header("Authorization"))
