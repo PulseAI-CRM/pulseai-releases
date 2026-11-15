@@ -68,7 +68,7 @@ class GitHub:
         # urllib normally forwards Authorization on redirects. Follow GitHub's
         # signed download URL ourselves, with no credential on the second request.
         try:
-            response = self.request(path, headers={"Accept": "application/octet-stream"})
+            response = self.request(path)
         except HTTPError as error:
             if error.code != 302:
                 raise
