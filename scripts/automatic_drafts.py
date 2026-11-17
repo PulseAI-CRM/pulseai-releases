@@ -256,6 +256,7 @@ def upload_draft(releases, release, identity, assets, recheck_source):
     if not current["draft"]:
         raise ValueError("Release was published during candidate upload")
     releases.json(f"releases/{release['id']}", "PATCH", {
+        "tag_name": identity["tag"],
         "body": (current.get("body") or "") + "\n\nCandidate transfer: complete",
     })
 
