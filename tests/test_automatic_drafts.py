@@ -84,6 +84,9 @@ class Releases:
         if path == "releases/1" and method == "PATCH":
             self.writes.append((method, path))
             self.release.update(data)
+            # GitHub can reset a draft's pending tag when PATCH omits tag_name.
+            if self.release["draft"] and "tag_name" not in data:
+                self.release["tag_name"] = "untagged-test"
             return deepcopy(self.release)
         raise AssertionError((path, method))
 
@@ -112,6 +115,33 @@ class Releases:
 
 
 class CandidateTests(unittest.TestCase):
+    def test_completed_draft_keeps_its_tag_for_discovery_on_retry(self):
+        source, releases = Source(), Releases()
+        original_json, original_pages = source.json, releases.pages
+
+        def source_json(path):
+            if path == f"actions/workflows/{uploader.WORKFLOW}":
+                return {"id": 55}
+            return original_json(path)
+
+        def release_pages(path):
+            if path == "releases":
+                return [deepcopy(releases.release)] if releases.release else []
+            return original_pages(path)
+
+        with patch.object(uploader, "GitHub", side_effect=lambda repository, token: source if repository == uploader.SOURCE else releases), \
+                patch.object(source, "json", side_effect=source_json), \
+                patch.object(releases, "pages", side_effect=release_pages), \
+                patch.object(uploader, "verify_main_history"), \
+                patch.dict(os.environ, {"SOURCE_ARTIFACTS_TOKEN": "source", "RELEASES_TOKEN": "destination", "SOURCE_RUN_ID": "123"}):
+            uploader.main()
+            self.assertEqual(releases.release["tag_name"], IDENTITY["tag"])
+            self.assertTrue(releases.release["draft"])
+            writes = deepcopy(releases.writes)
+            with patch.object(source, "download", side_effect=AssertionError("must reuse completed draft")):
+                uploader.main()
+            self.assertEqual(releases.writes, writes)
+
     def test_both_platforms_are_validated_before_any_draft_write(self):
         source, releases = Source(), Releases()
         with patch.object(uploader, "verify_main_history"):
